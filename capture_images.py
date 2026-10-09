@@ -23,6 +23,11 @@ CLASSES = {
     ord("3"): "cardboard",
 }
 
+# Minimum time (seconds) that must pass between saved images.
+# This forces real variation between shots instead of rapid-fire near-duplicates.
+COOLDOWN_SECONDS = 0.6
+last_saved_time = 0
+
 # Make sure folders exist
 for class_name in CLASSES.values():
     os.makedirs(os.path.join(DATASET_DIR, class_name), exist_ok=True)
@@ -64,6 +69,13 @@ while True:
     if key == ord("q"):
         break
     elif key in CLASSES:
+        now = time.time()
+        if now - last_saved_time < COOLDOWN_SECONDS:
+            # Too soon since last save — ignore this press so we don't
+            # capture near-identical frames.
+            continue
+        last_saved_time = now
+
         class_name = CLASSES[key]
         filename = f"{class_name}_{int(time.time() * 1000)}.jpg"
         filepath = os.path.join(DATASET_DIR, class_name, filename)

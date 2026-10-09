@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Storage Classifier</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.4em;
+    color: #333;
+  }
+  #preview {
+    max-width: 90%;
+    max-height: 300px;
+    border-radius: 10px;
+    margin: 15px 0;
+    display: none;
+  }
+  input[type="file"] {
+    display: none;
+  }
+  label, button {
+    display: inline-block;
+    background: #4a90d9;
+    color: white;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    margin: 10px 5px;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #aaa;
+  }
+  #result {
+    margin-top: 20px;
+    font-size: 1.3em;
+    font-weight: bold;
+    min-height: 1.5em;
+  }
+  #confidence {
+    font-size: 1em;
+    color: #555;
+  }
+  .uncertain {
+    color: #d9534f;
+  }
+  .confident {
+    color: #28a745;
+  }
+</style>
+</head>
+<body>
+
+<h1>Smart Storage Classifier</h1>
+<p>Take a photo of an item to check where it should be stored.</p>
+
+<label for="cameraInput">📷 Take Photo</label>
+<input type="file" id="cameraInput" accept="image/*" capture="environment">
+
+<br>
+<img id="preview" src="" alt="Preview">
+
+<div id="result"></div>
+<div id="confidence"></div>
+
+<br>
+<button id="nextBtn" style="display:none;">Next Item</button>
+
+<script>
+const cameraInput = document.getElementById("cameraInput");
+const preview = document.getElementById("preview");
+const resultDiv = document.getElementById("result");
+const confidenceDiv = document.getElementById("confidence");
+const nextBtn = document.getElementById("nextBtn");
+
+cameraInput.addEventListener("change", async () => {
+  const file = cameraInput.files[0];
+  if (!file) return;
+
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = "block";
+  resultDiv.textContent = "Classifying...";
+  resultDiv.className = "";
+  confidenceDiv.textContent = "";
+  nextBtn.style.display = "none";
+
+  const formData = new FormData();
+  formData.append("image", file);
+
+  try {
+    const response = await fetch("/classify", {
+      method: "POST",
+      body: formData
+    });
+    const data = await response.json();
+
+    if (data.error) {
+      resultDiv.textContent = "Error: " + data.error;
+      resultDiv.className = "uncertain";
+    } else if (!data.class) {
+      resultDiv.textContent = "No prediction returned";
+      resultDiv.className = "uncertain";
+    } else {
+      const label = data.class.charAt(0).toUpperCase() + data.class.slice(1);
+      if (data.uncertain) {
+        resultDiv.textContent = "Uncertain (" + label + ")";
+        resultDiv.className = "uncertain";
+      } else {
+        resultDiv.textContent = label;
+        resultDiv.className = "confident";
+      }
+      confidenceDiv.textContent = "Confidence: " + data.confidence + "%";
+    }
+  } catch (err) {
+    resultDiv.textContent = "Connection error";
+    resultDiv.className = "uncertain";
+  }
+
+  nextBtn.style.display = "inline-block";
+});
+
+nextBtn.addEventListener("click", () => {
+  preview.style.display = "none";
+  preview.src = "";
+  resultDiv.textContent = "";
+  confidenceDiv.textContent = "";
+  nextBtn.style.display = "none";
+  cameraInput.value = "";
+});
+</script>
+
+</body>
+</html>
